@@ -3,6 +3,7 @@ package com.transitops.controller;
 import com.transitops.dto.DashboardKpis;
 import com.transitops.enums.VehicleStatus;
 import com.transitops.service.ReportService;
+import com.transitops.service.ReportInsightsService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,9 +16,11 @@ import java.util.Map;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ReportInsightsService reportInsightsService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, ReportInsightsService reportInsightsService) {
         this.reportService = reportService;
+        this.reportInsightsService = reportInsightsService;
     }
 
     @GetMapping("/dashboard/kpis")
@@ -26,6 +29,14 @@ public class ReportController {
             @RequestParam(required = false) VehicleStatus status,
             @RequestParam(required = false) String region) {
         return ResponseEntity.ok(reportService.getDashboardKpis(type, status, region));
+    }
+
+    @PostMapping("/reports/insights")
+    public ResponseEntity<Map<String, Object>> generateInsights(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) VehicleStatus status,
+            @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(reportInsightsService.generateInsights(type, status, region));
     }
 
     @GetMapping("/reports/fuel-efficiency")

@@ -131,6 +131,14 @@ public class ReportService {
         }).collect(Collectors.toList());
     }
 
+    public List<Map<String, Object>> getOperationalCostByRegion(String region) {
+        return getOperationalCost().stream()
+                .filter(m -> {
+                    Vehicle v = vehicleRepository.findById((Long) m.get("vehicleId")).orElse(null);
+                    return v != null && v.getRegion() != null && v.getRegion().equalsIgnoreCase(region);
+                }).collect(Collectors.toList());
+    }
+
     public List<Map<String, Object>> getVehicleRoi() {
         return vehicleRepository.findAll().stream().map(v -> {
             List<FuelLog> fuelLogs = fuelRepository.findByVehicleId(v.getId());
@@ -154,6 +162,13 @@ public class ReportService {
             map.put("roi", roi);
             return map;
         }).collect(Collectors.toList());
+    }
+
+    public Map<String, Object> getVehicleRoiByRegNo(String regNo) {
+        return getVehicleRoi().stream()
+                .filter(m -> regNo.equalsIgnoreCase((String) m.get("regNo")))
+                .findFirst()
+                .orElse(null);
     }
 
     public String exportCsv(String type) {

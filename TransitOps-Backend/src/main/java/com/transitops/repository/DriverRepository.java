@@ -8,4 +8,5 @@ import java.util.List;
 public interface DriverRepository extends JpaRepository<Driver, Long> {
     boolean existsByLicenseNo(String licenseNo);
     List<Driver> findByStatus(DriverStatus status);
+    List<Driver> findByLicenseExpiryBefore(java.time.LocalDate date);
 }

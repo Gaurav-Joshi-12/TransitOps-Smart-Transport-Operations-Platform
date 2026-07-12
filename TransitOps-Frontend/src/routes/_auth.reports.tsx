@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -9,6 +9,9 @@ import { useStore } from "@/lib/store";
 import { DataTable, type Column } from "@/components/DataTable";
 import { ExportCSVButton, ExportLocalCSVButton } from "@/components/ExportCSVButton";
 import { KPICard } from "@/components/KPICard";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Loader2 } from "lucide-react";
+import { getReportInsights } from "@/services/api";
 
 export const Route = createFileRoute("/_auth/reports")({
   component: ReportsPage,
@@ -83,6 +86,7 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      <AIInsightsCard />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <KPICard label="Total Revenue" value={`₹${vehicles.reduce((a, v) => a + (v.revenue || 0), 0).toLocaleString()}`} accent="success" />
         <KPICard label="Average Fuel Efficiency" value={`${(efficiency.reduce((a, e) => a + e.kmpl, 0) / (efficiency.filter(e => e.kmpl > 0).length || 1)).toFixed(2)} km/L`} accent="primary" />
@@ -155,11 +159,63 @@ function ReportsPage() {
   );
 }
 
-function ChartCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+function ChartCard({ title, children, className, exportType }: { title: string; children: React.ReactNode; className?: string; exportType?: string }) {
   return (
-    <Card className={`border-border/60 bg-card p-5 ${className ?? ""}`}>
-      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
-      <div className="h-64">{children}</div>
+    <Card className="flex flex-col p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">{title}</h3>
+        {exportType && <ExportCSVButton type={exportType} />}
+      </div>
+      <div className="flex-1 min-h-[300px]">
+        {children}
+      </div>
+    </Card>
+  );
+}
+
+function AIInsightsCard() {
+  const [insight, setInsight] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleGenerate() {
+    setLoading(true);
+    try {
+      const data = await getReportInsights();
+      setInsight(data.insights);
+    } catch (err) {
+      setInsight("Insights are temporarily unavailable — showing raw data below.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="p-6 border-indigo-500/30 bg-indigo-500/5 relative overflow-hidden">
+      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center gap-2 text-indigo-400 font-semibold">
+            <Sparkles className="w-5 h-5" />
+            <h3>AI Executive Summary</h3>
+          </div>
+          {loading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating insights...
+            </div>
+          ) : insight ? (
+            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{insight}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate an AI summary of the current fleet state to identify notable trends and outliers.
+            </p>
+          )}
+        </div>
+        {!loading && !insight && (
+          <Button onClick={handleGenerate} variant="outline" className="shrink-0 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10">
+            Generate Insights
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

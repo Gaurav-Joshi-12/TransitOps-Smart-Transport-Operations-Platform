@@ -11,4 +11,5 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     List<Vehicle> findByStatus(VehicleStatus status);
     List<Vehicle> findByRegion(String region);
     List<Vehicle> findByTypeAndStatus(String type, VehicleStatus status);
+    long countByStatus(VehicleStatus status);
 }

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-
 import { useEffect, useRef } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Topbar } from "@/components/Topbar";
+import { ChatWidget } from "@/components/ChatWidget";
 import { useAuth } from "@/hooks/useAuth";
 import {
   getVehicles, getDrivers, getTrips, getMaintenance, getFuelLogs, getExpenses
@@ -77,6 +78,7 @@ function AuthLayout() {
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
+        <ChatWidget />
       </div>
     </div>
   );

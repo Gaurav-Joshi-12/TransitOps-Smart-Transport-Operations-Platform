@@ -336,6 +336,13 @@ export async function createFuelLog(f: Omit<FuelLog, "id">) {
   return mapped;
 }
 
+export async function askChatbot(message: string) {
+  return await fetchWithAuth("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
 export async function getExpenses() {
   const data = await fetchWithAuth("/expenses");
   const mapped = data.map(mapExpense);
@@ -359,4 +366,14 @@ export async function getDashboardKpis(params?: { type?: string; status?: string
   if (params?.region && params.region.trim()) parts.push(`region=${encodeURIComponent(params.region)}`);
   const url = "/dashboard/kpis" + (parts.length > 0 ? "?" + parts.join("&") : "");
   return fetchWithAuth(url);
+}
+
+// ---------- REPORTS ----------
+export async function getReportInsights(params?: { type?: string; status?: string; region?: string }) {
+  const parts: string[] = [];
+  if (params?.type && params.type.trim()) parts.push(`type=${encodeURIComponent(params.type)}`);
+  if (params?.status && params.status.trim()) parts.push(`status=${encodeURIComponent(params.status)}`);
+  if (params?.region && params.region.trim()) parts.push(`region=${encodeURIComponent(params.region)}`);
+  const url = "/reports/insights" + (parts.length > 0 ? "?" + parts.join("&") : "");
+  return fetchWithAuth(url, { method: "POST" });
 }
