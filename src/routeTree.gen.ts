@@ -13,6 +13,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVehiclesRouteImport } from './routes/_auth.vehicles'
+import { Route as AuthTripsRouteImport } from './routes/_auth.trips'
+import { Route as AuthReportsRouteImport } from './routes/_auth.reports'
+import { Route as AuthMaintenanceRouteImport } from './routes/_auth.maintenance'
+import { Route as AuthExpensesRouteImport } from './routes/_auth.expenses'
 import { Route as AuthDriversRouteImport } from './routes/_auth.drivers'
 import { Route as AuthDashboardRouteImport } from './routes/_auth.dashboard'
 
@@ -35,6 +39,26 @@ const AuthVehiclesRoute = AuthVehiclesRouteImport.update({
   path: '/vehicles',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthTripsRoute = AuthTripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthReportsRoute = AuthReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthMaintenanceRoute = AuthMaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthExpensesRoute = AuthExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthDriversRoute = AuthDriversRouteImport.update({
   id: '/drivers',
   path: '/drivers',
@@ -51,6 +75,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthDashboardRoute
   '/drivers': typeof AuthDriversRoute
+  '/expenses': typeof AuthExpensesRoute
+  '/maintenance': typeof AuthMaintenanceRoute
+  '/reports': typeof AuthReportsRoute
+  '/trips': typeof AuthTripsRoute
   '/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +86,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthDashboardRoute
   '/drivers': typeof AuthDriversRoute
+  '/expenses': typeof AuthExpensesRoute
+  '/maintenance': typeof AuthMaintenanceRoute
+  '/reports': typeof AuthReportsRoute
+  '/trips': typeof AuthTripsRoute
   '/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRoutesById {
@@ -67,13 +99,35 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/_auth/drivers': typeof AuthDriversRoute
+  '/_auth/expenses': typeof AuthExpensesRoute
+  '/_auth/maintenance': typeof AuthMaintenanceRoute
+  '/_auth/reports': typeof AuthReportsRoute
+  '/_auth/trips': typeof AuthTripsRoute
   '/_auth/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/drivers' | '/vehicles'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/drivers'
+    | '/expenses'
+    | '/maintenance'
+    | '/reports'
+    | '/trips'
+    | '/vehicles'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/drivers' | '/vehicles'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/drivers'
+    | '/expenses'
+    | '/maintenance'
+    | '/reports'
+    | '/trips'
+    | '/vehicles'
   id:
     | '__root__'
     | '/'
@@ -81,6 +135,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_auth/dashboard'
     | '/_auth/drivers'
+    | '/_auth/expenses'
+    | '/_auth/maintenance'
+    | '/_auth/reports'
+    | '/_auth/trips'
     | '/_auth/vehicles'
   fileRoutesById: FileRoutesById
 }
@@ -120,6 +178,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVehiclesRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/trips': {
+      id: '/_auth/trips'
+      path: '/trips'
+      fullPath: '/trips'
+      preLoaderRoute: typeof AuthTripsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/reports': {
+      id: '/_auth/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthReportsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/maintenance': {
+      id: '/_auth/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof AuthMaintenanceRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/expenses': {
+      id: '/_auth/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof AuthExpensesRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/drivers': {
       id: '/_auth/drivers'
       path: '/drivers'
@@ -140,12 +226,20 @@ declare module '@tanstack/react-router' {
 interface AuthRouteChildren {
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthDriversRoute: typeof AuthDriversRoute
+  AuthExpensesRoute: typeof AuthExpensesRoute
+  AuthMaintenanceRoute: typeof AuthMaintenanceRoute
+  AuthReportsRoute: typeof AuthReportsRoute
+  AuthTripsRoute: typeof AuthTripsRoute
   AuthVehiclesRoute: typeof AuthVehiclesRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthDashboardRoute: AuthDashboardRoute,
   AuthDriversRoute: AuthDriversRoute,
+  AuthExpensesRoute: AuthExpensesRoute,
+  AuthMaintenanceRoute: AuthMaintenanceRoute,
+  AuthReportsRoute: AuthReportsRoute,
+  AuthTripsRoute: AuthTripsRoute,
   AuthVehiclesRoute: AuthVehiclesRoute,
 }
 
