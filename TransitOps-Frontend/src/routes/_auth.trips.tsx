@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, Send, CheckCircle2, XCircle } from "lucide-react";
 import type { Trip, TripStatus } from "@/lib/types";
@@ -41,13 +41,13 @@ function TripsPage() {
     ? (drivers.find((d) => d.id === user.id) ?? drivers.find((d) => d.name === user.name) ?? null)
     : null;
 
-  const trips = useStore((s) => {
-    const all = s.trips;
+  const allTrips = useStore((s) => s.trips);
+  const trips = useMemo(() => {
     if (user?.role === "DRIVER" && myDriverRecord) {
-      return all.filter((t) => t.driverId === myDriverRecord.id);
+      return allTrips.filter((t) => t.driverId === myDriverRecord.id);
     }
-    return all;
-  });
+    return allTrips;
+  }, [allTrips, user?.role, myDriverRecord]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<Trip | null>(null);
