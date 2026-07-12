@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Truck, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,13 @@ function RegisterPage() {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // If already logged in, redirect
-  if (user) {
-    navigate({ to: "/dashboard" });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [user, navigate]);
+
+  if (user) return null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
