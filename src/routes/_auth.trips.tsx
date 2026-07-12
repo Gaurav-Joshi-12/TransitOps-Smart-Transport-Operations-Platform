@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Send, CheckCircle2, XCircle } from "lucide-react";
 import type { Trip, TripStatus } from "@/lib/types";
