@@ -1,5 +1,6 @@
 import type { Vehicle, Driver, Trip, MaintenanceLog, FuelLog, Expense, User } from "./types";
 
+
 export const seedUsers: User[] = [
   { id: "u1", name: "Fiona Manager", email: "fleet@transitops.io", role: "FLEET_MANAGER" },
   { id: "u2", name: "Alex Driver", email: "driver@transitops.io", role: "DRIVER" },
