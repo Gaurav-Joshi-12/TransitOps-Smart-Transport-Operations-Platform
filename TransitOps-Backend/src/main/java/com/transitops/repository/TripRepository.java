@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
     List<Trip> findByStatus(TripStatus status);
+    List<Trip> findByDriverId(Long driverId);
+    List<Trip> findByStatusAndDriverId(TripStatus status, Long driverId);
 }

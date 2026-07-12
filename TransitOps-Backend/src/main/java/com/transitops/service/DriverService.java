@@ -56,4 +56,15 @@ public class DriverService {
 
         return driverRepository.save(driver);
     }
+
+    public Driver updateDriverStatus(Long id, DriverStatus status, Integer safetyScore) {
+        Driver driver = getDriver(id);
+        if (status != null) {
+            driver.setStatus(status);
+        }
+        if (safetyScore != null) {
+            driver.setSafetyScore(safetyScore);
+        }
+        return driverRepository.save(driver);
+    }
 }

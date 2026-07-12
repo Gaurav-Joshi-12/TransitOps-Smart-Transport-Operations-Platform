@@ -30,9 +30,13 @@ public class TripService {
         this.driverRepository = driverRepository;
     }
 
-    public List<Trip> getTrips(TripStatus status) {
-        if (status != null) {
+    public List<Trip> getTrips(TripStatus status, Long driverId) {
+        if (status != null && driverId != null) {
+            return tripRepository.findByStatusAndDriverId(status, driverId);
+        } else if (status != null) {
             return tripRepository.findByStatus(status);
+        } else if (driverId != null) {
+            return tripRepository.findByDriverId(driverId);
         }
         return tripRepository.findAll();
     }
@@ -137,19 +141,26 @@ public class TripService {
     public Trip cancelTrip(Long id) {
         Trip trip = getTrip(id);
 
-        if (trip.getStatus() != TripStatus.DISPATCHED) {
-            throw new BusinessValidationException("Only DISPATCHED trips can be cancelled");
+        if (trip.getStatus() != TripStatus.DISPATCHED && trip.getStatus() != TripStatus.DRAFT) {
+            throw new BusinessValidationException("Only DRAFT or DISPATCHED trips can be cancelled");
         }
 
         Vehicle vehicle = trip.getVehicle();
         Driver driver = trip.getDriver();
 
-        vehicle.setStatus(VehicleStatus.AVAILABLE);
-        driver.setStatus(DriverStatus.AVAILABLE);
-        trip.setStatus(TripStatus.CANCELLED);
+        // Only restore status if the trip was dispatched (draft never changed statuses)
+        if (trip.getStatus() == TripStatus.DISPATCHED) {
+            if (vehicle != null) {
+                vehicle.setStatus(VehicleStatus.AVAILABLE);
+                vehicleRepository.save(vehicle);
+            }
+            if (driver != null) {
+                driver.setStatus(DriverStatus.AVAILABLE);
+                driverRepository.save(driver);
+            }
+        }
 
-        vehicleRepository.save(vehicle);
-        driverRepository.save(driver);
+        trip.setStatus(TripStatus.CANCELLED);
         return tripRepository.save(trip);
     }
 }

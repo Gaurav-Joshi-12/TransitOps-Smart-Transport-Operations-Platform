@@ -1,6 +1,7 @@
 package com.transitops.controller;
 
 import com.transitops.dto.DashboardKpis;
+import com.transitops.enums.VehicleStatus;
 import com.transitops.service.ReportService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +21,11 @@ public class ReportController {
     }
 
     @GetMapping("/dashboard/kpis")
-    public ResponseEntity<DashboardKpis> getDashboardKpis() {
-        return ResponseEntity.ok(reportService.getDashboardKpis());
+    public ResponseEntity<DashboardKpis> getDashboardKpis(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) VehicleStatus status,
+            @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(reportService.getDashboardKpis(type, status, region));
     }
 
     @GetMapping("/reports/fuel-efficiency")
@@ -48,7 +52,7 @@ public class ReportController {
     public ResponseEntity<String> exportCsv(@RequestParam String type) {
         String csv = reportService.exportCsv(type);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + type + "_export.csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + type + "-export.csv\"")
                 .header(HttpHeaders.CONTENT_TYPE, "text/csv")
                 .body(csv);
     }

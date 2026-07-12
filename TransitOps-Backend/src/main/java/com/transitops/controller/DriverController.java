@@ -1,5 +1,6 @@
 package com.transitops.controller;
 
+import com.transitops.dto.DriverStatusUpdateRequest;
 import com.transitops.entity.Driver;
 import com.transitops.enums.DriverStatus;
 import com.transitops.service.DriverService;
@@ -39,5 +40,11 @@ public class DriverController {
     @PreAuthorize("hasRole('ROLE_FLEET_MANAGER')")
     public ResponseEntity<Driver> updateDriver(@PathVariable Long id, @RequestBody Driver driver) {
         return ResponseEntity.ok(driverService.updateDriver(id, driver));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ROLE_FLEET_MANAGER', 'ROLE_SAFETY_OFFICER')")
+    public ResponseEntity<Driver> updateDriverStatus(@PathVariable Long id, @RequestBody DriverStatusUpdateRequest request) {
+        return ResponseEntity.ok(driverService.updateDriverStatus(id, request.getStatus(), request.getSafetyScore()));
     }
 }
