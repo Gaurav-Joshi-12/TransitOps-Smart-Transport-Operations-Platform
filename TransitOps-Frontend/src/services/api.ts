@@ -145,6 +145,31 @@ export const authService = {
     return { token, user };
   },
 
+  async register(name: string, email: string, password: string, role: string): Promise<{ token: string; user: User }> {
+    const data = await fetchWithAuth("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password, role }),
+    });
+
+    const token: string = data.token;
+    const rawUser = data.user ?? data;
+
+    const user: User = {
+      id: String(rawUser.id),
+      name: rawUser.name ?? email.split("@")[0],
+      email: rawUser.email ?? email,
+      role: rawUser.role as Role,
+    };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("transitops_token", token);
+      localStorage.setItem("transitops_user", JSON.stringify(user));
+    }
+
+    store.set({ currentUser: user });
+    return { token, user };
+  },
+
   logout() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("transitops_token");

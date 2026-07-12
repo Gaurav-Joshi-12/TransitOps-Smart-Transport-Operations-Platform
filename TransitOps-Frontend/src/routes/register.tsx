@@ -8,25 +8,28 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/api";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/register")({
   ssr: false,
   beforeLoad: () => {
     if (typeof window !== "undefined" && localStorage.getItem("transitops_user")) {
       // Don't throw redirect here — let the component handle it so AuthProvider has time to init
     }
   },
-  component: LoginPage,
+  component: RegisterPage,
 });
 
-function LoginPage() {
-  const { login, user } = useAuth();
+function RegisterPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("FLEET_MANAGER");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPw, setShowPw] = useState(false);
-  const accounts = authService.availableAccounts();
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // If already logged in, redirect
   if (user) {
@@ -37,13 +40,26 @@ function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Client-side validation
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setBusy(true);
     try {
-      const u = await login(email, password);
-      toast.success(`Welcome back, ${u.name}!`);
+      const { user: u } = await authService.register(name, email, password, role);
+      toast.success(`Welcome to TransitOps, ${u.name}!`);
+      // Update global auth state to trigger redirect and nav updates
       navigate({ to: "/dashboard" });
-    } catch (err) {
-      setError("Invalid credentials. Please check your email and password.");
+      window.location.reload(); // Hard reload to fetch new role's data cleanly
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -95,11 +111,11 @@ function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex items-center justify-center bg-background p-6">
-        <form onSubmit={onSubmit} className="w-full max-w-sm space-y-5">
+      <div className="flex items-center justify-center bg-background p-6 overflow-y-auto">
+        <form onSubmit={onSubmit} className="w-full max-w-sm space-y-5 my-8">
           <div>
-            <h1 className="text-2xl font-semibold">Sign in</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Access your operations console.</p>
+            <h1 className="text-2xl font-semibold">Register</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Create your operations account.</p>
           </div>
 
           {error ? (
@@ -107,6 +123,19 @@ function LoginPage() {
               {error}
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              required
+              autoFocus
+            />
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -117,9 +146,9 @@ function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@transitops.com"
               required
-              autoFocus
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <div className="relative">
@@ -128,7 +157,7 @@ function LoginPage() {
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
+                placeholder="Minimum 8 characters"
                 required
               />
               <button
@@ -141,36 +170,55 @@ function LoginPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </Button>
-
-          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-            <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Demo accounts — password: <code className="text-foreground">password</code>
-            </div>
-            <div className="space-y-1">
-              {accounts.map((a) => (
-                <button
-                  type="button"
-                  key={a.email}
-                  onClick={() => { setEmail(a.email); setPassword("password"); }}
-                  className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-accent transition-colors"
-                >
-                  <span className="font-mono">{a.email}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    {a.role.replace(/_/g, " ")}
-                  </span>
-                </button>
-              ))}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPw ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw(!showConfirmPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              required
+            >
+              <option value="FLEET_MANAGER">Fleet Manager</option>
+              <option value="DRIVER">Driver</option>
+              <option value="SAFETY_OFFICER">Safety Officer</option>
+              <option value="FINANCIAL_ANALYST">Financial Analyst</option>
+            </select>
+            <p className="text-xs text-muted-foreground pt-1">
+              Note: Self-selection of roles is for demonstration purposes.
+            </p>
+          </div>
+
+          <Button type="submit" className="w-full mt-2" disabled={busy}>
+            {busy ? "Creating account…" : "Register"}
+          </Button>
+
           <div className="text-center mt-4">
             <p className="text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline font-medium">
-                Register
+              Already have an account?{" "}
+              <Link to="/login" className="text-primary hover:underline font-medium">
+                Sign in
               </Link>
             </p>
           </div>
