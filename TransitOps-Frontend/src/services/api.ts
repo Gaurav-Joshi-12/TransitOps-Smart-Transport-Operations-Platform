@@ -1,24 +1,81 @@
 import type {
   Vehicle, Driver, Trip, MaintenanceLog, FuelLog, Expense, User, Role,
 } from "@/lib/types";
-import { store, uid } from "@/lib/store";
-import { seedUsers } from "@/lib/mock-data";
+import { store } from "@/lib/store";
 
-// Simulated latency for realism (kept tiny for demo snappiness)
-const delay = <T,>(v: T, ms = 120) => new Promise<T>((r) => setTimeout(() => r(v), ms));
+const API_BASE = "http://localhost:8080/api";
+
+function toFrontendStatus(s: string) {
+  if (!s) return s;
+  return s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+}
+function toBackendStatus(s: string) {
+  if (!s) return s;
+  return s.toUpperCase().replace(/ /g, '_');
+}
+
+function mapVehicle(v: any): Vehicle {
+  return { ...v, id: String(v.id), status: toFrontendStatus(v.status) };
+}
+function unmapVehicle(v: any): any {
+  return { ...v, status: toBackendStatus(v.status) };
+}
+function mapDriver(d: any): Driver {
+  return { ...d, id: String(d.id), status: toFrontendStatus(d.status) };
+}
+function unmapDriver(d: any): any {
+  return { ...d, status: toBackendStatus(d.status) };
+}
+function mapTrip(t: any): Trip {
+  return { ...t, id: String(t.id), status: toFrontendStatus(t.status), vehicleId: String(t.vehicle?.id), driverId: String(t.driver?.id) };
+}
+function mapMaintenance(m: any): MaintenanceLog {
+  return { ...m, id: String(m.id), status: toFrontendStatus(m.status), vehicleId: String(m.vehicle?.id) };
+}
+function mapFuel(f: any): FuelLog {
+  return { ...f, id: String(f.id), vehicleId: String(f.vehicle?.id) };
+}
+function mapExpense(e: any): Expense {
+  return { ...e, id: String(e.id), vehicleId: String(e.vehicle?.id) };
+}
+
+async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("transitops_token") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  if (!res.ok) {
+    let errorMsg = "API Error";
+    try {
+      const errJson = await res.json();
+      errorMsg = errJson.message || errorMsg;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
 
 // ---------- AUTH ----------
 export const authService = {
-  async login(email: string, _password: string): Promise<{ token: string; user: User }> {
-    const user = seedUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())
-      ?? seedUsers[0];
-    const token = "mock.jwt." + btoa(user.id + ":" + Date.now());
+  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+    const data = await fetchWithAuth("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    const { token, user } = data;
+    user.id = String(user.id);
     if (typeof window !== "undefined") {
       localStorage.setItem("transitops_token", token);
       localStorage.setItem("transitops_user", JSON.stringify(user));
     }
     store.set({ currentUser: user });
-    return delay({ token, user });
+    return { token, user };
   },
   logout() {
     if (typeof window !== "undefined") {
@@ -40,120 +97,132 @@ export const authService = {
     }
   },
   availableAccounts(): { email: string; role: Role; name: string }[] {
-    return seedUsers.map((u) => ({ email: u.email, role: u.role, name: u.name }));
+    return [
+      { email: "fleetmanager@transitops.com", role: "FLEET_MANAGER" as Role, name: "Fleet Manager" },
+      { email: "driver@transitops.com", role: "DRIVER" as Role, name: "Driver User" },
+      { email: "safety@transitops.com", role: "SAFETY_OFFICER" as Role, name: "Safety Officer" },
+      { email: "finance@transitops.com", role: "FINANCIAL_ANALYST" as Role, name: "Finance Analyst" },
+    ];
   },
 };
 
 // ---------- VEHICLES ----------
-export async function getVehicles() { return delay(store.get().vehicles); }
+export async function getVehicles() {
+  const data = await fetchWithAuth("/vehicles");
+  const mapped = data.map(mapVehicle);
+  store.set({ vehicles: mapped });
+  return mapped;
+}
 export async function createVehicle(v: Omit<Vehicle, "id">) {
-  const dup = store.get().vehicles.some((x) => x.regNo.toLowerCase() === v.regNo.toLowerCase());
-  if (dup) throw new Error("A vehicle with this registration number already exists.");
-  const nv: Vehicle = { ...v, id: uid("v") };
-  store.set((s) => ({ vehicles: [...s.vehicles, nv] }));
-  return delay(nv);
+  const data = await fetchWithAuth("/vehicles", { method: "POST", body: JSON.stringify(unmapVehicle(v)) });
+  const mapped = mapVehicle(data);
+  store.set((s) => ({ vehicles: [...s.vehicles, mapped] }));
+  return mapped;
 }
 export async function updateVehicle(id: string, patch: Partial<Vehicle>) {
-  store.set((s) => ({ vehicles: s.vehicles.map((v) => (v.id === id ? { ...v, ...patch } : v)) }));
-  return delay(store.get().vehicles.find((v) => v.id === id)!);
+  const v = store.get().vehicles.find(x => x.id === id);
+  const data = await fetchWithAuth(`/vehicles/${id}`, { method: "PUT", body: JSON.stringify(unmapVehicle({ ...v, ...patch })) });
+  const mapped = mapVehicle(data);
+  store.set((s) => ({ vehicles: s.vehicles.map((x) => (x.id === id ? mapped : x)) }));
+  return mapped;
 }
 
 // ---------- DRIVERS ----------
-export async function getDrivers() { return delay(store.get().drivers); }
+export async function getDrivers() {
+  const data = await fetchWithAuth("/drivers");
+  const mapped = data.map(mapDriver);
+  store.set({ drivers: mapped });
+  return mapped;
+}
 export async function createDriver(d: Omit<Driver, "id">) {
-  const nd: Driver = { ...d, id: uid("d") };
-  store.set((s) => ({ drivers: [...s.drivers, nd] }));
-  return delay(nd);
+  const data = await fetchWithAuth("/drivers", { method: "POST", body: JSON.stringify(unmapDriver(d)) });
+  const mapped = mapDriver(data);
+  store.set((s) => ({ drivers: [...s.drivers, mapped] }));
+  return mapped;
 }
 export async function updateDriver(id: string, patch: Partial<Driver>) {
-  store.set((s) => ({ drivers: s.drivers.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
-  return delay(store.get().drivers.find((d) => d.id === id)!);
+  const d = store.get().drivers.find(x => x.id === id);
+  const data = await fetchWithAuth(`/drivers/${id}`, { method: "PUT", body: JSON.stringify(unmapDriver({ ...d, ...patch })) });
+  const mapped = mapDriver(data);
+  store.set((s) => ({ drivers: s.drivers.map((x) => (x.id === id ? mapped : x)) }));
+  return mapped;
 }
 
 // ---------- TRIPS ----------
-export async function getTrips() { return delay(store.get().trips); }
+export async function getTrips() {
+  const data = await fetchWithAuth("/trips");
+  const mapped = data.map(mapTrip);
+  store.set({ trips: mapped });
+  return mapped;
+}
 export async function createTrip(t: Omit<Trip, "id" | "status">) {
-  const nt: Trip = { ...t, id: uid("t"), status: "Draft" };
-  store.set((s) => ({ trips: [...s.trips, nt] }));
-  return delay(nt);
+  const payload = { ...t, vehicle: { id: t.vehicleId }, driver: { id: t.driverId } };
+  const data = await fetchWithAuth("/trips", { method: "POST", body: JSON.stringify(payload) });
+  const mapped = mapTrip(data);
+  store.set((s) => ({ trips: [...s.trips, mapped] }));
+  return mapped;
 }
 export async function dispatchTrip(id: string) {
-  const trip = store.get().trips.find((t) => t.id === id);
-  if (!trip) throw new Error("Trip not found");
-  if (trip.status !== "Draft") throw new Error("Only Draft trips can be dispatched.");
-  store.set((s) => ({
-    trips: s.trips.map((t) => (t.id === id ? { ...t, status: "Dispatched" } : t)),
-    vehicles: s.vehicles.map((v) => (v.id === trip.vehicleId ? { ...v, status: "On Trip" } : v)),
-    drivers: s.drivers.map((d) => (d.id === trip.driverId ? { ...d, status: "On Trip" } : d)),
-  }));
-  return delay(true);
+  await fetchWithAuth(`/trips/${id}/dispatch`, { method: "POST" });
+  await Promise.all([getTrips(), getVehicles(), getDrivers()]);
+  return true;
 }
 export async function completeTrip(id: string, finalOdometer: number, fuelConsumed: number) {
-  const trip = store.get().trips.find((t) => t.id === id);
-  if (!trip) throw new Error("Trip not found");
-  if (trip.status !== "Dispatched") throw new Error("Only Dispatched trips can be completed.");
-  store.set((s) => ({
-    trips: s.trips.map((t) => (t.id === id
-      ? { ...t, status: "Completed", finalOdometer, fuelConsumed } : t)),
-    vehicles: s.vehicles.map((v) => (v.id === trip.vehicleId
-      ? { ...v, status: "Available", odometer: finalOdometer } : v)),
-    drivers: s.drivers.map((d) => (d.id === trip.driverId ? { ...d, status: "Available" } : d)),
-  }));
-  return delay(true);
+  await fetchWithAuth(`/trips/${id}/complete`, { method: "POST", body: JSON.stringify({ finalOdometer, fuelConsumed }) });
+  await Promise.all([getTrips(), getVehicles(), getDrivers()]);
+  return true;
 }
 export async function cancelTrip(id: string) {
-  const trip = store.get().trips.find((t) => t.id === id);
-  if (!trip) throw new Error("Trip not found");
-  if (trip.status !== "Dispatched") throw new Error("Only Dispatched trips can be cancelled.");
-  store.set((s) => ({
-    trips: s.trips.map((t) => (t.id === id ? { ...t, status: "Cancelled" } : t)),
-    vehicles: s.vehicles.map((v) => (v.id === trip.vehicleId ? { ...v, status: "Available" } : v)),
-    drivers: s.drivers.map((d) => (d.id === trip.driverId ? { ...d, status: "Available" } : d)),
-  }));
-  return delay(true);
+  await fetchWithAuth(`/trips/${id}/cancel`, { method: "POST" });
+  await Promise.all([getTrips(), getVehicles(), getDrivers()]);
+  return true;
 }
 
 // ---------- MAINTENANCE ----------
-export async function getMaintenance() { return delay(store.get().maintenance); }
+export async function getMaintenance() {
+  const data = await fetchWithAuth("/maintenance");
+  const mapped = data.map(mapMaintenance);
+  store.set({ maintenance: mapped });
+  return mapped;
+}
 export async function openMaintenance(vehicleId: string, description: string) {
-  const veh = store.get().vehicles.find((v) => v.id === vehicleId);
-  if (!veh) throw new Error("Vehicle not found");
-  if (veh.status === "Retired") throw new Error("Retired vehicle cannot enter maintenance.");
-  const log: MaintenanceLog = {
-    id: uid("m"), vehicleId, description, status: "Open",
-    openedAt: new Date().toISOString().slice(0, 10),
-  };
-  store.set((s) => ({
-    maintenance: [...s.maintenance, log],
-    vehicles: s.vehicles.map((v) => (v.id === vehicleId ? { ...v, status: "In Shop" } : v)),
-  }));
-  return delay(log);
+  const payload = { vehicle: { id: vehicleId }, description, cost: 0 };
+  const data = await fetchWithAuth("/maintenance", { method: "POST", body: JSON.stringify(payload) });
+  const mapped = mapMaintenance(data);
+  store.set((s) => ({ maintenance: [...s.maintenance, mapped] }));
+  await getVehicles();
+  return mapped;
 }
 export async function closeMaintenance(id: string) {
-  const log = store.get().maintenance.find((m) => m.id === id);
-  if (!log) throw new Error("Log not found");
-  store.set((s) => ({
-    maintenance: s.maintenance.map((m) => (m.id === id
-      ? { ...m, status: "Closed", closedAt: new Date().toISOString().slice(0, 10) } : m)),
-    vehicles: s.vehicles.map((v) => {
-      if (v.id !== log.vehicleId) return v;
-      if (v.status === "Retired") return v;
-      return { ...v, status: "Available" };
-    }),
-  }));
-  return delay(true);
+  await fetchWithAuth(`/maintenance/${id}/close`, { method: "POST" });
+  await Promise.all([getMaintenance(), getVehicles()]);
+  return true;
 }
 
 // ---------- FUEL / EXPENSES ----------
-export async function getFuelLogs() { return delay(store.get().fuel); }
-export async function createFuelLog(f: Omit<FuelLog, "id">) {
-  const nf: FuelLog = { ...f, id: uid("f") };
-  store.set((s) => ({ fuel: [...s.fuel, nf] }));
-  return delay(nf);
+export async function getFuelLogs() {
+  const data = await fetchWithAuth("/fuel-logs");
+  const mapped = data.map(mapFuel);
+  store.set({ fuel: mapped });
+  return mapped;
 }
-export async function getExpenses() { return delay(store.get().expenses); }
+export async function createFuelLog(f: Omit<FuelLog, "id">) {
+  const payload = { ...f, vehicle: { id: f.vehicleId } };
+  const data = await fetchWithAuth("/fuel-logs", { method: "POST", body: JSON.stringify(payload) });
+  const mapped = mapFuel(data);
+  store.set((s) => ({ fuel: [...s.fuel, mapped] }));
+  return mapped;
+}
+export async function getExpenses() {
+  const data = await fetchWithAuth("/expenses");
+  const mapped = data.map(mapExpense);
+  store.set({ expenses: mapped });
+  return mapped;
+}
 export async function createExpense(e: Omit<Expense, "id">) {
-  const ne: Expense = { ...e, id: uid("e") };
-  store.set((s) => ({ expenses: [...s.expenses, ne] }));
-  return delay(ne);
+  const payload = { ...e, vehicle: { id: e.vehicleId } };
+  const data = await fetchWithAuth("/expenses", { method: "POST", body: JSON.stringify(payload) });
+  const mapped = mapExpense(data);
+  store.set((s) => ({ expenses: [...s.expenses, mapped] }));
+  return mapped;
 }
