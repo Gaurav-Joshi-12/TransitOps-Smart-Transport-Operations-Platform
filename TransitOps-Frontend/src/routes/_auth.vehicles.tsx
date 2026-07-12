@@ -17,16 +17,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+import { RoleGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/hooks/useAuth";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
+
 export const Route = createFileRoute("/_auth/vehicles")({
   component: VehiclesPage,
 });
 
 const empty: Omit<Vehicle, "id"> = {
   regNo: "", name: "", type: "Cargo Van", maxLoadKg: 500, odometer: 0, acquisitionCost: 0, status: "Available",
+  region: "North", revenue: 0,
 };
 
 function VehiclesPage() {
   const vehicles = useStore((s) => s.vehicles);
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [form, setForm] = useState<Omit<Vehicle, "id">>(empty);
@@ -75,17 +81,24 @@ function VehiclesPage() {
     { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
   ];
 
+  const isFleetManager = user?.role === "FLEET_MANAGER";
+
   return (
     <div className="space-y-4">
       <DataTable
         data={vehicles}
         columns={columns}
         searchKeys={["regNo", "name", "type"]}
-        onRowClick={openEdit}
+        onRowClick={isFleetManager ? openEdit : undefined}
         toolbar={
-          <Button onClick={openNew} size="sm">
-            <Plus className="mr-1.5 h-4 w-4" /> Add vehicle
-          </Button>
+          <div className="flex gap-2">
+            <ExportCSVButton type="vehicles" />
+            <RoleGuard allow={["FLEET_MANAGER"]}>
+              <Button onClick={openNew} size="sm">
+                <Plus className="mr-1.5 h-4 w-4" /> Add vehicle
+              </Button>
+            </RoleGuard>
+          </div>
         }
       />
 
@@ -130,6 +143,21 @@ function VehiclesPage() {
             <div className="space-y-2">
               <Label>Odometer (km)</Label>
               <Input type="number" min={0} value={form.odometer} onChange={(e) => setForm({ ...form, odometer: Number(e.target.value) })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Region</Label>
+              <Select value={form.region} onValueChange={(v) => setForm({ ...form, region: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["North", "South", "East", "West"].map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Revenue (₹)</Label>
+              <Input type="number" min={0} value={form.revenue} onChange={(e) => setForm({ ...form, revenue: Number(e.target.value) })} required />
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Acquisition cost (₹)</Label>

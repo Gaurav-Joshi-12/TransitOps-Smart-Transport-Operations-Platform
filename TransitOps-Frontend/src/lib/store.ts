@@ -2,9 +2,6 @@ import { useSyncExternalStore } from "react";
 import type {
   User, Vehicle, Driver, Trip, MaintenanceLog, FuelLog, Expense,
 } from "./types";
-import {
-  seedVehicles, seedDrivers, seedTrips, seedMaintenance, seedFuel, seedExpenses,
-} from "./mock-data";
 
 interface State {
   currentUser: User | null;
@@ -18,12 +15,12 @@ interface State {
 
 let state: State = {
   currentUser: null,
-  vehicles: seedVehicles,
-  drivers: seedDrivers,
-  trips: seedTrips,
-  maintenance: seedMaintenance,
-  fuel: seedFuel,
-  expenses: seedExpenses,
+  vehicles: [],
+  drivers: [],
+  trips: [],
+  maintenance: [],
+  fuel: [],
+  expenses: [],
 };
 
 const listeners = new Set<() => void>();

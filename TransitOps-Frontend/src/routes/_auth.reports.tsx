@@ -7,7 +7,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { useStore } from "@/lib/store";
 import { DataTable, type Column } from "@/components/DataTable";
-import { ExportCSVButton } from "@/components/ExportCSVButton";
+import { ExportCSVButton, ExportLocalCSVButton } from "@/components/ExportCSVButton";
+import { KPICard } from "@/components/KPICard";
 
 export const Route = createFileRoute("/_auth/reports")({
   component: ReportsPage,
@@ -28,6 +29,7 @@ function ReportsPage() {
   const trips = useStore((s) => s.trips);
   const fuel = useStore((s) => s.fuel);
   const expenses = useStore((s) => s.expenses);
+  const maintenance = useStore((s) => s.maintenance);
 
   const efficiency = useMemo(() => vehicles
     .filter((v) => v.status !== "Retired")
@@ -48,20 +50,20 @@ function ReportsPage() {
 
   const cost = useMemo(() => vehicles.map((v) => {
     const f = fuel.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.cost, 0);
+    const m = maintenance.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.cost, 0);
     const e = expenses.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.amount, 0);
-    return { name: v.name, fuel: f, other: e, total: f + e };
-  }), [vehicles, fuel, expenses]);
+    return { name: v.name, fuel: f, maintenance: m, other: e, total: f + m + e };
+  }), [vehicles, fuel, maintenance, expenses]);
 
   const roi: ROIRow[] = useMemo(() => vehicles.map((v) => {
-    const doneTrips = trips.filter((t) => t.vehicleId === v.id && t.status === "Completed");
-    const revenue = doneTrips.reduce((a, t) => a + t.plannedDistance * 25, 0); // demo: ₹25/km
+    const revenue = v.revenue ?? 0;
     const f = fuel.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.cost, 0);
-    const m = expenses.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.amount, 0);
+    const m = maintenance.filter((x) => x.vehicleId === v.id).reduce((a, x) => a + x.cost, 0);
     const roiVal = v.acquisitionCost > 0
       ? +(((revenue - (f + m)) / v.acquisitionCost) * 100).toFixed(2)
       : 0;
     return { id: v.id, vehicle: v.name, revenue, fuel: f, maintenance: m, acquisition: v.acquisitionCost, roi: roiVal };
-  }), [vehicles, trips, fuel, expenses]);
+  }), [vehicles, fuel, maintenance]);
 
   const roiCols: Column<ROIRow>[] = [
     { key: "vehicle", header: "Vehicle", sortable: true, accessor: (r) => r.vehicle },
@@ -81,6 +83,11 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <KPICard label="Total Revenue" value={`₹${vehicles.reduce((a, v) => a + (v.revenue || 0), 0).toLocaleString()}`} accent="success" />
+        <KPICard label="Average Fuel Efficiency" value={`${(efficiency.reduce((a, e) => a + e.kmpl, 0) / (efficiency.filter(e => e.kmpl > 0).length || 1)).toFixed(2)} km/L`} accent="primary" />
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartCard title="Fuel efficiency (km / L)">
           <ResponsiveContainer width="100%" height="100%">
@@ -115,6 +122,7 @@ function ReportsPage() {
               <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
               <Legend />
               <Bar dataKey="fuel" stackId="a" fill="var(--chart-1)" name="Fuel" />
+              <Bar dataKey="maintenance" stackId="a" fill="var(--chart-2)" name="Maintenance" />
               <Bar dataKey="other" stackId="a" fill="var(--chart-4)" name="Other" />
             </BarChart>
           </ResponsiveContainer>
@@ -129,9 +137,20 @@ function ReportsPage() {
           data={roi}
           columns={roiCols}
           searchKeys={["vehicle"]}
-          toolbar={<ExportCSVButton filename="vehicle-roi.csv" rows={roi as unknown as Record<string, unknown>[]} />}
+          toolbar={<ExportLocalCSVButton filename="vehicle-roi.csv" rows={roi as unknown as Record<string, unknown>[]} />}
         />
       </div>
+
+      <Card className="border-border/60 bg-card p-5">
+        <h3 className="mb-3 text-sm font-semibold">Data Export Center</h3>
+        <p className="mb-4 text-xs text-muted-foreground">Download full data logs directly from the backend database.</p>
+        <div className="flex flex-wrap gap-3">
+          <ExportCSVButton type="vehicles" />
+          <ExportCSVButton type="trips" />
+          <ExportCSVButton type="fuel" />
+          <ExportCSVButton type="expenses" />
+        </div>
+      </Card>
     </div>
   );
 }

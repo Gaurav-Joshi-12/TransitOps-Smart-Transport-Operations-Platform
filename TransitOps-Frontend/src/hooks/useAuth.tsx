@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { User } from "@/lib/types";
 import { authService } from "@/services/api";
 import { useStore } from "@/lib/store";
+import { store } from "@/lib/store";
 
 interface AuthCtx {
   user: User | null;
@@ -15,10 +16,17 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const user = useStore((s) => s.currentUser);
   const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    authService.restore();
+    // Attempt to restore session from localStorage
+    const restored = authService.restore();
+    if (!restored) {
+      // No session — clear any stale state
+      store.set({ currentUser: null });
+    }
     setReady(true);
   }, []);
+
   const value: AuthCtx = {
     user,
     ready,
@@ -28,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     logout: () => authService.logout(),
   };
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

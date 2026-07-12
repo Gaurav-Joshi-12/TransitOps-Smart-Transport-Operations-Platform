@@ -21,15 +21,33 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { RoleGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/hooks/useAuth";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
 
 export const Route = createFileRoute("/_auth/trips")({
   component: TripsPage,
 });
 
 function TripsPage() {
-  const trips = useStore((s) => s.trips);
+  const { user } = useAuth();
   const vehicles = useStore((s) => s.vehicles);
   const drivers = useStore((s) => s.drivers);
+
+  // Find the Driver record that corresponds to the currently logged-in user.
+  // Primary match: Driver entity ID == User entity ID (works with current seed order).
+  // Fallback: match by name so it's robust even if IDs shift.
+  const myDriverRecord = user?.role === "DRIVER"
+    ? (drivers.find((d) => d.id === user.id) ?? drivers.find((d) => d.name === user.name) ?? null)
+    : null;
+
+  const trips = useStore((s) => {
+    const all = s.trips;
+    if (user?.role === "DRIVER" && myDriverRecord) {
+      return all.filter((t) => t.driverId === myDriverRecord.id);
+    }
+    return all;
+  });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<Trip | null>(null);
@@ -40,6 +58,8 @@ function TripsPage() {
   const availableVehicles = vehicles.filter((v) => v.status === "Available");
   const availableDrivers = drivers.filter((d) => d.status === "Available" && d.licenseExpiry > today);
 
+  const isDriver = user?.role === "DRIVER";
+
   // Create form
   const [form, setForm] = useState({
     source: "", destination: "", vehicleId: "", driverId: "",
@@ -49,13 +69,16 @@ function TripsPage() {
   const overload = !!(selectedVeh && form.cargoWeightKg > selectedVeh.maxLoadKg);
 
   function openCreate() {
-    setForm({ source: "", destination: "", vehicleId: "", driverId: "", cargoWeightKg: 0, plannedDistance: 0 });
+    // If user is a driver, pre-fill their own driver record
+    const prefilledDriverId = myDriverRecord?.id ?? "";
+    setForm({ source: "", destination: "", vehicleId: "", driverId: prefilledDriverId, cargoWeightKg: 0, plannedDistance: 0 });
     setCreateOpen(true);
   }
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     if (overload) return;
-    if (!form.vehicleId || !form.driverId) { toast.error("Select vehicle and driver."); return; }
+    if (!form.vehicleId) { toast.error("Please select a vehicle."); return; }
+    if (!form.driverId) { toast.error("No driver record found for your account. Contact a Fleet Manager."); return; }
     try {
       await createTrip(form);
       toast.success("Trip created as Draft");
@@ -104,8 +127,11 @@ function TripsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={openCreate}><Plus className="mr-1.5 h-4 w-4" /> New trip</Button>
+      <div className="flex justify-end gap-2">
+        <ExportCSVButton type="trips" />
+        <RoleGuard allow={["FLEET_MANAGER", "DRIVER"]}>
+          <Button size="sm" onClick={openCreate}><Plus className="mr-1.5 h-4 w-4" /> New trip</Button>
+        </RoleGuard>
       </div>
 
       <Tabs defaultValue="All">
@@ -134,7 +160,10 @@ function TripsPage() {
           <DialogHeader>
             <DialogTitle>New trip</DialogTitle>
             <DialogDescription>
-              Only Available vehicles and drivers with a valid license are shown.
+              {isDriver
+                ? `Creating as driver: ${myDriverRecord?.name ?? user?.name}. Only Available vehicles are shown.`
+                : "Only Available vehicles and drivers with a valid license are shown."
+              }
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="grid grid-cols-2 gap-4">
@@ -159,19 +188,29 @@ function TripsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Driver</Label>
-              <Select value={form.driverId} onValueChange={(v) => setForm({ ...form, driverId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
-                <SelectContent>
-                  {availableDrivers.length === 0 ? (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No eligible drivers</div>
-                  ) : availableDrivers.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name} · {d.licenseCategory}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Drivers see their own record auto-selected; Fleet Managers pick from all eligible drivers */}
+            {isDriver ? (
+              <div className="space-y-2">
+                <Label>Driver</Label>
+                <div className="flex h-9 items-center rounded-md border border-border bg-muted/30 px-3 text-sm">
+                  {myDriverRecord ? myDriverRecord.name : <span className="text-muted-foreground">No driver record linked</span>}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Driver</Label>
+                <Select value={form.driverId} onValueChange={(v) => setForm({ ...form, driverId: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
+                  <SelectContent>
+                    {availableDrivers.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">No eligible drivers</div>
+                    ) : availableDrivers.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name} · {d.licenseCategory}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Cargo weight (kg)</Label>
               <Input
@@ -220,19 +259,23 @@ function TripsPage() {
               </div>
               <DialogFooter>
                 {detail.status === "Draft" && (
-                  <Button onClick={() => doDispatch(detail)}>
-                    <Send className="mr-1.5 h-4 w-4" /> Dispatch
-                  </Button>
+                  <RoleGuard allow={["FLEET_MANAGER", "DRIVER"]}>
+                    <Button onClick={() => doDispatch(detail)}>
+                      <Send className="mr-1.5 h-4 w-4" /> Dispatch
+                    </Button>
+                  </RoleGuard>
                 )}
                 {detail.status === "Dispatched" && (
-                  <>
-                    <Button variant="outline" onClick={() => setConfirmCancel(detail)}>
-                      <XCircle className="mr-1.5 h-4 w-4" /> Cancel trip
-                    </Button>
-                    <Button onClick={() => openComplete(detail)}>
-                      <CheckCircle2 className="mr-1.5 h-4 w-4" /> Complete
-                    </Button>
-                  </>
+                  <RoleGuard allow={["FLEET_MANAGER", "DRIVER"]}>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setConfirmCancel(detail)}>
+                        <XCircle className="mr-1.5 h-4 w-4" /> Cancel trip
+                      </Button>
+                      <Button onClick={() => openComplete(detail)}>
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Complete
+                      </Button>
+                    </div>
+                  </RoleGuard>
                 )}
               </DialogFooter>
             </>

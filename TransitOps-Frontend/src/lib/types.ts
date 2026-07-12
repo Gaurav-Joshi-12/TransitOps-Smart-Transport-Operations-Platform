@@ -17,6 +17,8 @@ export interface Vehicle {
   odometer: number;
   acquisitionCost: number;
   status: VehicleStatus;
+  region?: string;
+  revenue?: number;
 }
 
 export type DriverStatus = "Available" | "On Trip" | "Off Duty" | "Suspended";
@@ -50,6 +52,7 @@ export interface MaintenanceLog {
   id: string;
   vehicleId: string;
   description: string;
+  cost: number;
   status: MaintenanceStatus;
   openedAt: string;
   closedAt?: string;

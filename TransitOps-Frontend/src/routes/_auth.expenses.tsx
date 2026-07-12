@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { createFuelLog, createExpense } from "@/services/api";
+import { RoleGuard } from "@/components/RoleGuard";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
 import type { FuelLog, Expense } from "@/lib/types";
 import { DataTable, type Column } from "@/components/DataTable";
 import { KPICard } from "@/components/KPICard";
@@ -29,6 +31,7 @@ function ExpensesPage() {
   const vehicles = useStore((s) => s.vehicles);
   const fuel = useStore((s) => s.fuel);
   const expenses = useStore((s) => s.expenses);
+  const maintenance = useStore((s) => s.maintenance);
 
   const [fuelOpen, setFuelOpen] = useState(false);
   const [expOpen, setExpOpen] = useState(false);
@@ -40,13 +43,15 @@ function ExpensesPage() {
   const perVehicleCost = useMemo(() => {
     return vehicles.map((v) => {
       const fuelC = fuel.filter((f) => f.vehicleId === v.id).reduce((a, f) => a + f.cost, 0);
+      const maintC = maintenance.filter((m) => m.vehicleId === v.id).reduce((a, m) => a + m.cost, 0);
       const expC = expenses.filter((e) => e.vehicleId === v.id).reduce((a, e) => a + e.amount, 0);
-      return { vehicle: v.name, total: fuelC + expC, fuel: fuelC, other: expC };
+      return { vehicle: v.name, total: fuelC + maintC + expC, fuel: fuelC, maintenance: maintC, other: expC };
     });
-  }, [vehicles, fuel, expenses]);
+  }, [vehicles, fuel, maintenance, expenses]);
 
   const totalOps = perVehicleCost.reduce((a, x) => a + x.total, 0);
   const totalFuel = perVehicleCost.reduce((a, x) => a + x.fuel, 0);
+  const totalMaint = perVehicleCost.reduce((a, x) => a + x.maintenance, 0);
 
   async function submitFuel(e: React.FormEvent) {
     e.preventDefault();
@@ -82,10 +87,11 @@ function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <KPICard label="Total ops spend" value={`₹${totalOps.toLocaleString()}`} accent="primary" />
         <KPICard label="Fuel spend" value={`₹${totalFuel.toLocaleString()}`} accent="info" />
-        <KPICard label="Other expenses" value={`₹${(totalOps - totalFuel).toLocaleString()}`} accent="warning" />
+        <KPICard label="Maintenance spend" value={`₹${totalMaint.toLocaleString()}`} accent="warning" />
+        <KPICard label="Other expenses" value={`₹${(totalOps - totalFuel - totalMaint).toLocaleString()}`} accent="success" />
       </div>
 
       <Card className="border-border/60 bg-card p-5">
@@ -95,9 +101,10 @@ function ExpensesPage() {
             <div key={v.vehicle} className="rounded-md border border-border/40 bg-background/40 p-3">
               <div className="text-sm font-medium">{v.vehicle}</div>
               <div className="mt-1 text-lg font-semibold tabular-nums">₹{v.total.toLocaleString()}</div>
-              <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
-                <span>Fuel ₹{v.fuel.toLocaleString()}</span>
-                <span>Other ₹{v.other.toLocaleString()}</span>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                <span>Fuel: ₹{v.fuel.toLocaleString()}</span>
+                <span>Maint: ₹{v.maintenance.toLocaleString()}</span>
+                <span>Other: ₹{v.other.toLocaleString()}</span>
               </div>
             </div>
           ))}
@@ -112,13 +119,27 @@ function ExpensesPage() {
         <TabsContent value="fuel" className="mt-4">
           <DataTable
             data={fuel} columns={fuelCols} searchKeys={[]}
-            toolbar={<Button size="sm" onClick={() => setFuelOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Add fuel</Button>}
+            toolbar={
+              <div className="flex gap-2">
+                <ExportCSVButton type="fuel" />
+                <RoleGuard allow={["FLEET_MANAGER", "FINANCIAL_ANALYST"]}>
+                  <Button size="sm" onClick={() => setFuelOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Add fuel</Button>
+                </RoleGuard>
+              </div>
+            }
           />
         </TabsContent>
         <TabsContent value="exp" className="mt-4">
           <DataTable
             data={expenses} columns={expCols} searchKeys={["type"]}
-            toolbar={<Button size="sm" onClick={() => setExpOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Add expense</Button>}
+            toolbar={
+              <div className="flex gap-2">
+                <ExportCSVButton type="expenses" />
+                <RoleGuard allow={["FLEET_MANAGER", "FINANCIAL_ANALYST"]}>
+                  <Button size="sm" onClick={() => setExpOpen(true)}><Plus className="mr-1.5 h-4 w-4" /> Add expense</Button>
+                </RoleGuard>
+              </div>
+            }
           />
         </TabsContent>
       </Tabs>
