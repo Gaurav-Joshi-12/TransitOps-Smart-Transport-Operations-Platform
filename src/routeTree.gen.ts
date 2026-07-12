@@ -9,38 +9,161 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthVehiclesRouteImport } from './routes/_auth.vehicles'
+import { Route as AuthTripsRouteImport } from './routes/_auth.trips'
+import { Route as AuthReportsRouteImport } from './routes/_auth.reports'
+import { Route as AuthMaintenanceRouteImport } from './routes/_auth.maintenance'
+import { Route as AuthExpensesRouteImport } from './routes/_auth.expenses'
+import { Route as AuthDriversRouteImport } from './routes/_auth.drivers'
+import { Route as AuthDashboardRouteImport } from './routes/_auth.dashboard'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthVehiclesRoute = AuthVehiclesRouteImport.update({
+  id: '/vehicles',
+  path: '/vehicles',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthTripsRoute = AuthTripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthReportsRoute = AuthReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthMaintenanceRoute = AuthMaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthExpensesRoute = AuthExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDriversRoute = AuthDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDashboardRoute = AuthDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthDashboardRoute
+  '/drivers': typeof AuthDriversRoute
+  '/expenses': typeof AuthExpensesRoute
+  '/maintenance': typeof AuthMaintenanceRoute
+  '/reports': typeof AuthReportsRoute
+  '/trips': typeof AuthTripsRoute
+  '/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthDashboardRoute
+  '/drivers': typeof AuthDriversRoute
+  '/expenses': typeof AuthExpensesRoute
+  '/maintenance': typeof AuthMaintenanceRoute
+  '/reports': typeof AuthReportsRoute
+  '/trips': typeof AuthTripsRoute
+  '/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_auth': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_auth/dashboard': typeof AuthDashboardRoute
+  '/_auth/drivers': typeof AuthDriversRoute
+  '/_auth/expenses': typeof AuthExpensesRoute
+  '/_auth/maintenance': typeof AuthMaintenanceRoute
+  '/_auth/reports': typeof AuthReportsRoute
+  '/_auth/trips': typeof AuthTripsRoute
+  '/_auth/vehicles': typeof AuthVehiclesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/drivers'
+    | '/expenses'
+    | '/maintenance'
+    | '/reports'
+    | '/trips'
+    | '/vehicles'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/drivers'
+    | '/expenses'
+    | '/maintenance'
+    | '/reports'
+    | '/trips'
+    | '/vehicles'
+  id:
+    | '__root__'
+    | '/'
+    | '/_auth'
+    | '/login'
+    | '/_auth/dashboard'
+    | '/_auth/drivers'
+    | '/_auth/expenses'
+    | '/_auth/maintenance'
+    | '/_auth/reports'
+    | '/_auth/trips'
+    | '/_auth/vehicles'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +171,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/vehicles': {
+      id: '/_auth/vehicles'
+      path: '/vehicles'
+      fullPath: '/vehicles'
+      preLoaderRoute: typeof AuthVehiclesRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/trips': {
+      id: '/_auth/trips'
+      path: '/trips'
+      fullPath: '/trips'
+      preLoaderRoute: typeof AuthTripsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/reports': {
+      id: '/_auth/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthReportsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/maintenance': {
+      id: '/_auth/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof AuthMaintenanceRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/expenses': {
+      id: '/_auth/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof AuthExpensesRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/drivers': {
+      id: '/_auth/drivers'
+      path: '/drivers'
+      fullPath: '/drivers'
+      preLoaderRoute: typeof AuthDriversRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/dashboard': {
+      id: '/_auth/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthDashboardRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
+interface AuthRouteChildren {
+  AuthDashboardRoute: typeof AuthDashboardRoute
+  AuthDriversRoute: typeof AuthDriversRoute
+  AuthExpensesRoute: typeof AuthExpensesRoute
+  AuthMaintenanceRoute: typeof AuthMaintenanceRoute
+  AuthReportsRoute: typeof AuthReportsRoute
+  AuthTripsRoute: typeof AuthTripsRoute
+  AuthVehiclesRoute: typeof AuthVehiclesRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthDashboardRoute: AuthDashboardRoute,
+  AuthDriversRoute: AuthDriversRoute,
+  AuthExpensesRoute: AuthExpensesRoute,
+  AuthMaintenanceRoute: AuthMaintenanceRoute,
+  AuthReportsRoute: AuthReportsRoute,
+  AuthTripsRoute: AuthTripsRoute,
+  AuthVehiclesRoute: AuthVehiclesRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
